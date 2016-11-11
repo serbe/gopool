@@ -2,15 +2,16 @@ package gopool
 
 import (
 	"container/list"
-	"fmt"
 	"log"
 	"sync"
 )
 
 // Pool - specification of gopool
 type Pool struct {
-	numWorkers     int
-	isRunning      bool
+	numWorkers int
+
+	useResultChan bool
+
 	workersRunning bool
 	managerRunning bool
 
@@ -30,7 +31,7 @@ type Pool struct {
 	addTaskChan     chan *Task
 	doneTaskChan    chan *Task
 	wantedTaskChan  chan chan *Task
-	ResultChan      chan interface{}
+	resultChan      chan *Task
 }
 
 // New - create new gorourine pool
@@ -45,7 +46,7 @@ func New(numWorkers int) *Pool {
 	pool.addTaskChan = make(chan *Task)
 	pool.doneTaskChan = make(chan *Task)
 	pool.wantedTaskChan = make(chan chan *Task)
-	pool.ResultChan = make(chan interface{})
+	pool.resultChan = make(chan *Task)
 
 	return pool
 }
@@ -72,8 +73,8 @@ func (p *Pool) Run() {
 // Add - add task to pool
 func (p *Pool) Add(f func(...interface{}) interface{}, args ...interface{}) {
 	task := new(Task)
-	task.f = f
-	task.args = args
+	task.F = f
+	task.Args = args
 	task.confirm = make(chan bool)
 	p.addTaskChan <- task
 	<-task.confirm
@@ -87,28 +88,4 @@ func (p *Pool) Status() (int, int, int) {
 // Wait - wait to finish all tasks
 func (p *Pool) Wait() {
 	p.tasksWg.Wait()
-}
-
-// Results - return all complete tasks and clear old results
-func (p *Pool) Results() []*Task {
-	results := make([]*Task, p.completeTaskList.Len())
-	i := 0
-	for elem := p.completeTaskList.Front(); elem != nil; elem = elem.Next() {
-		results[i] = elem.Value.(*Task)
-		i++
-	}
-	p.completeTaskList = list.New()
-	return results
-}
-
-func (p *Pool) exec(t *Task) {
-	defer func() {
-		err := recover()
-		if err != nil {
-			log.Println("panic while running job:", err)
-			t.result = nil
-			t.err = fmt.Errorf(err.(string))
-		}
-	}()
-	t.result = t.f(t.args...)
 }

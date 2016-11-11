@@ -17,9 +17,6 @@ manager:
 				task := elem.Value.(*Task)
 				p.waitTaskList.Remove(elem)
 				taskChan <- task
-				p.ResultChan <- task.result
-			} else {
-				p.workersQuitChan <- true
 			}
 		case doneTask := <-p.doneTaskChan:
 			p.runningTasks--
