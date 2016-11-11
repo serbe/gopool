@@ -47,9 +47,9 @@ func (p *Pool) exec(t *Task) {
 	defer func() {
 		err := recover()
 		if err != nil {
-			log.Println("panic while running job:", err)
+			log.Println("Panic while running task:", err)
 			t.Result = nil
-			t.Err = fmt.Errorf(err.(string))
+			t.Err = fmt.Errorf("Recovery %v", err.(string))
 		}
 	}()
 	t.Result = t.F(t.Args...)

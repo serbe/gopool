@@ -89,3 +89,9 @@ func (p *Pool) Status() (int, int, int) {
 func (p *Pool) Wait() {
 	p.tasksWg.Wait()
 }
+
+// Quit - send quit
+func (p *Pool) Quit() {
+	close(p.workersQuitChan)
+	close(p.managerQuitChan)
+}
