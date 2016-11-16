@@ -37,6 +37,7 @@ gettask:
 		case task = <-p.resultChan:
 			break gettask
 		default:
+			// case <-time.After(10 * time.Millisecond):
 		}
 	}
 	p.useResultChan = false

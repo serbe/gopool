@@ -18,6 +18,7 @@ worker:
 		case <-p.workersQuitChan:
 			break worker
 		default:
+			// case <-time.After(10 * time.Millisecond):
 		}
 	}
 }

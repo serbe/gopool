@@ -26,7 +26,7 @@ manager:
 		case <-p.managerQuitChan:
 			break manager
 		default:
-
+			// case <-time.After(10 * time.Millisecond):
 		}
 	}
 }
