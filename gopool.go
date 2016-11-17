@@ -8,16 +8,13 @@ import (
 
 // Pool - specification of gopool
 type Pool struct {
-	numWorkers int
-
-	useResultChan bool
-
+	numWorkers     int
+	useResultChan  bool
 	workersRunning bool
 	managerRunning bool
-
-	addedTasks    int
-	runningTasks  int
-	completeTasks int
+	addedTasks     int
+	runningTasks   int
+	completeTasks  int
 
 	workersWg sync.WaitGroup
 	managerWg sync.WaitGroup
@@ -72,8 +69,8 @@ func (p *Pool) Status() (int, int, int) {
 	return p.addedTasks, p.runningTasks, p.completeTasks
 }
 
-// Wait - wait to finish all tasks
-func (p *Pool) Wait() {
+// WaitAll - wait to finish all tasks
+func (p *Pool) WaitAll() {
 	p.tasksWg.Wait()
 }
 
@@ -81,4 +78,19 @@ func (p *Pool) Wait() {
 func (p *Pool) Quit() {
 	close(p.workersQuitChan)
 	close(p.managerQuitChan)
+}
+
+// ResultChan - return chan of result tasks
+func (p *Pool) ResultChan(open bool) *chan *Task {
+	if open {
+		p.useResultChan = true
+	} else {
+		p.useResultChan = false
+	}
+	return &p.resultChan
+}
+
+// Done - check all task done
+func (p *Pool) Done() bool {
+	return p.addedTasks > 0 && p.runningTasks == 0 && p.addedTasks == p.completeTasks
 }

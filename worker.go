@@ -8,6 +8,7 @@ var ms10 = time.Duration(10) * time.Millisecond
 
 func (p *Pool) worker(id int) {
 	defer p.workersWg.Done()
+workerLoop:
 	for {
 		select {
 		case <-time.After(ms10):
@@ -32,9 +33,7 @@ func (p *Pool) worker(id int) {
 				}
 			}
 		case <-p.workersQuitChan:
-			break
-			// default:
-			// case <-time.After(10 * time.Millisecond):
+			break workerLoop
 		}
 	}
 }

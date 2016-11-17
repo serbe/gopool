@@ -37,14 +37,6 @@ func (p *Pool) Results() []*Task {
 	return results
 }
 
-// GetTask - get next result
-func (p *Pool) GetTask() *Task {
-	p.useResultChan = true
-	task := <-p.resultChan
-	p.useResultChan = false
-	return task
-}
-
 func (p *Pool) exec(t *Task) {
 	defer func() {
 		err := recover()

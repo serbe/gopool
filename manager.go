@@ -3,6 +3,7 @@ package gopool
 func (p *Pool) manager() {
 	p.managerWg.Add(1)
 	defer p.managerWg.Done()
+managerLoop:
 	for {
 		select {
 		case <-p.addTaskSignal:
@@ -13,9 +14,7 @@ func (p *Pool) manager() {
 			p.tasksWg.Done()
 			p.completeTasks++
 		case <-p.managerQuitChan:
-			break
-			// default:
-			// case <-time.After(10 * time.Millisecond):
+			break managerLoop
 		}
 	}
 }
