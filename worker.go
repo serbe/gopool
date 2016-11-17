@@ -16,7 +16,9 @@ workerLoop:
 				elem := p.taskPool.Front()
 				if elem != nil {
 					task := elem.Value.(*Task)
-					p.taskPool.Remove(elem)
+					if elem != nil {
+						p.taskPool.Remove(elem)
+					}
 					task.WorkerID = id
 					p.runningTasks++
 					p.exec(task)
@@ -25,7 +27,7 @@ workerLoop:
 						p.resultChan <- task
 					}
 				} else {
-					p.taskPool.Remove(elem)
+					// p.taskPool.Remove(elem)
 					p.doneTaskSignal <- nil
 					if p.useResultChan {
 						p.resultChan <- nil

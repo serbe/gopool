@@ -57,7 +57,7 @@ func (p *Pool) Run() error {
 	}
 	p.workersRunning = true
 	if p.managerRunning {
-		return fmt.Errorf("wanager already running")
+		return fmt.Errorf("manager already running")
 	}
 	go p.manager()
 	p.managerRunning = true
