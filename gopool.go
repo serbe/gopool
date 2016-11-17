@@ -2,7 +2,7 @@ package gopool
 
 import (
 	"container/list"
-	"log"
+	"fmt"
 	"sync"
 )
 
@@ -23,15 +23,15 @@ type Pool struct {
 	managerWg sync.WaitGroup
 	tasksWg   sync.WaitGroup
 
-	waitTaskList     *list.List
-	completeTaskList *list.List
+	taskPool         *list.List
+	completeTaskPool *list.List
 
 	workersQuitChan chan bool
 	managerQuitChan chan bool
-	addTaskChan     chan *Task
-	doneTaskChan    chan *Task
-	wantedTaskChan  chan chan *Task
-	resultChan      chan *Task
+
+	addTaskSignal  chan bool
+	doneTaskSignal chan *Task
+	resultChan     chan *Task
 }
 
 // New - create new gorourine pool
@@ -39,45 +39,32 @@ type Pool struct {
 func New(numWorkers int) *Pool {
 	pool := new(Pool)
 	pool.numWorkers = numWorkers
-	pool.waitTaskList = list.New()
-	pool.completeTaskList = list.New()
+	pool.taskPool = list.New()
+	pool.completeTaskPool = list.New()
 	pool.workersQuitChan = make(chan bool)
 	pool.managerQuitChan = make(chan bool)
-	pool.addTaskChan = make(chan *Task)
-	pool.doneTaskChan = make(chan *Task)
-	pool.wantedTaskChan = make(chan chan *Task)
+	pool.addTaskSignal = make(chan bool)
+	pool.doneTaskSignal = make(chan *Task)
 	pool.resultChan = make(chan *Task)
-
 	return pool
 }
 
 // Run - start pool
-func (p *Pool) Run() {
+func (p *Pool) Run() error {
 	if p.workersRunning {
-		log.Println("Workers already running")
-	} else {
-		for i := 0; i < p.numWorkers; i++ {
-			p.workersWg.Add(1)
-			go p.worker(i)
-		}
-		p.workersRunning = true
+		return fmt.Errorf("workers already running")
 	}
+	for i := 0; i < p.numWorkers; i++ {
+		p.workersWg.Add(1)
+		go p.worker(i)
+	}
+	p.workersRunning = true
 	if p.managerRunning {
-		log.Println("Manager already running")
-	} else {
-		go p.manager()
-		p.managerRunning = true
+		return fmt.Errorf("wanager already running")
 	}
-}
-
-// Add - add task to pool
-func (p *Pool) Add(f func(...interface{}) interface{}, args ...interface{}) {
-	task := new(Task)
-	task.F = f
-	task.Args = args
-	task.confirm = make(chan bool)
-	p.addTaskChan <- task
-	<-task.confirm
+	go p.manager()
+	p.managerRunning = true
+	return nil
 }
 
 // Status - return addedTasks, runningTasks ant completeTasks
