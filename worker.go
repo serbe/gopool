@@ -26,12 +26,6 @@ workerLoop:
 					if p.useResultChan {
 						p.resultChan <- task
 					}
-				} else {
-					// p.taskPool.Remove(elem)
-					p.doneTaskSignal <- nil
-					if p.useResultChan {
-						p.resultChan <- nil
-					}
 				}
 			}
 		case <-p.workersQuitChan:
