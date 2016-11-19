@@ -1,7 +1,6 @@
 package gopool
 
 import (
-	"container/list"
 	"fmt"
 	"log"
 )
@@ -17,23 +16,20 @@ type Task struct {
 
 // Add - add task to pool
 func (p *Pool) Add(f func(...interface{}) interface{}, args ...interface{}) {
-	task := new(Task)
-	task.F = f
-	task.Args = args
-	p.taskPool.PushBack(task)
-	p.addedTasks++
-	p.addTaskSignal <- true
+	if f != nil && args != nil {
+		task := new(Task)
+		task.F = f
+		task.Args = args
+		p.waitingTaskList.put(task)
+		p.addedTasks++
+		p.addTaskSignal <- true
+	}
 }
 
 // Results - return all complete tasks and clear old results
 func (p *Pool) Results() []*Task {
-	results := make([]*Task, p.completeTaskPool.Len())
-	i := 0
-	for elem := p.completeTaskPool.Front(); elem != nil; elem = elem.Next() {
-		results[i] = elem.Value.(*Task)
-		i++
-	}
-	p.completeTaskPool = list.New()
+	results := p.completeTaskList.val
+	p.completeTaskList = new(tList)
 	return results
 }
 

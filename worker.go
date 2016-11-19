@@ -1,8 +1,6 @@
 package gopool
 
-import (
-	"time"
-)
+import "time"
 
 var ms10 = time.Duration(10) * time.Millisecond
 
@@ -12,13 +10,9 @@ workerLoop:
 	for {
 		select {
 		case <-time.After(ms10):
-			if p.taskPool.Len() > 0 {
-				elem := p.taskPool.Front()
-				if elem != nil {
-					task := elem.Value.(*Task)
-					if elem != nil {
-						p.taskPool.Remove(elem)
-					}
+			if p.waitingTaskList.len > 0 {
+				task, err := p.waitingTaskList.get()
+				if err == nil {
 					task.WorkerID = id
 					p.runningTasks++
 					p.exec(task)

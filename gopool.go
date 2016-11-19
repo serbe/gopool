@@ -1,7 +1,6 @@
 package gopool
 
 import (
-	"container/list"
 	"fmt"
 	"sync"
 )
@@ -20,8 +19,8 @@ type Pool struct {
 	managerWg sync.WaitGroup
 	tasksWg   sync.WaitGroup
 
-	taskPool         *list.List
-	completeTaskPool *list.List
+	waitingTaskList  *tList
+	completeTaskList *tList
 
 	workersQuitChan chan bool
 	managerQuitChan chan bool
@@ -36,8 +35,8 @@ type Pool struct {
 func New(numWorkers int) *Pool {
 	pool := new(Pool)
 	pool.numWorkers = numWorkers
-	pool.taskPool = list.New()
-	pool.completeTaskPool = list.New()
+	pool.waitingTaskList = new(tList)
+	pool.completeTaskList = new(tList)
 	pool.workersQuitChan = make(chan bool)
 	pool.managerQuitChan = make(chan bool)
 	pool.addTaskSignal = make(chan bool)
