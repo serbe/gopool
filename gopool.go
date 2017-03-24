@@ -1,8 +1,13 @@
 package gopool
 
 import (
-	"fmt"
+	"errors"
 	"sync"
+)
+
+var (
+	errWorkers = errors.New("workers already running")
+	errManager = errors.New("manager already running")
 )
 
 // Pool - specification of gopool
@@ -48,16 +53,16 @@ func New(numWorkers int) *Pool {
 // Run - start pool
 func (p *Pool) Run() error {
 	if p.workersRunning {
-		return fmt.Errorf("workers already running")
+		return errWorkers
 	}
 	for i := 0; i < p.numWorkers; i++ {
 		p.workersWg.Add(1)
 		go p.worker(i)
 	}
 	p.workersRunning = true
-	if p.managerRunning {
-		return fmt.Errorf("manager already running")
-	}
+	// if p.managerRunning {
+	// 	return errManager
+	// }
 	go p.manager()
 	p.managerRunning = true
 	return nil
