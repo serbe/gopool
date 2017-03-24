@@ -16,6 +16,10 @@ func Test1(t *testing.T) {
 		t.Fatalf("Found %v number of workers, want %v", p.numWorkers, numWorkers)
 	}
 	err := p.Run()
+	if err != nil {
+		t.Fatal("Have error in already start workers")
+	}
+	err = p.Run()
 	if err != errWorkers {
 		t.Fatal("No have error in already start workers")
 	}
@@ -42,4 +46,19 @@ func Test1(t *testing.T) {
 		t.Fatal("Wrong status of result chan")
 	}
 	p.Add(testFunc, 1)
+
+	p.Quit()
+	// p.WaitAll()
+}
+
+func BenchmarkAccumulate(b *testing.B) {
+	b.StopTimer()
+	b.StartTimer()
+	p := New(numWorkers)
+	p.Run()
+	for i := 0; i < b.N; i++ {
+		p.Add(testFunc, i)
+	}
+	p.WaitAll()
+	b.StopTimer()
 }
