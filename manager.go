@@ -10,7 +10,7 @@ managerLoop:
 			p.tasksWg.Add(1)
 		case task := <-p.doneTaskSignal:
 			p.runningTasks--
-			p.completeTaskList.put(task)
+			_ = p.completeTaskList.put(task)
 			p.tasksWg.Done()
 			p.completeTasks++
 		case <-p.managerQuitChan:

@@ -34,15 +34,15 @@ func Test1(t *testing.T) {
 	if complete != completeTasks {
 		t.Fatal("Wrong number of complete tasks")
 	}
-	if p.Done() != false {
+	if !p.Done() {
 		t.Fatal("Wrong done status")
 	}
 	p.ResultChan(false)
-	if p.useResultChan != false {
+	if !p.useResultChan {
 		t.Fatal("Wrong status of result chan")
 	}
 	p.ResultChan(true)
-	if p.useResultChan != true {
+	if !p.useResultChan {
 		t.Fatal("Wrong status of result chan")
 	}
 	p.Add(testFunc, 1)
@@ -55,7 +55,7 @@ func BenchmarkAccumulate(b *testing.B) {
 	b.StopTimer()
 	b.StartTimer()
 	p := New(numWorkers)
-	p.Run()
+	_ = p.Run()
 	for i := 0; i < b.N; i++ {
 		p.Add(testFunc, i)
 	}

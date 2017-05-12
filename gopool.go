@@ -7,7 +7,6 @@ import (
 
 var (
 	errWorkers = errors.New("workers already running")
-	errManager = errors.New("manager already running")
 )
 
 // Pool - specification of gopool

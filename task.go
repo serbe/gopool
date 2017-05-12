@@ -20,7 +20,7 @@ func (p *Pool) Add(f func(...interface{}) interface{}, args ...interface{}) {
 		task := new(Task)
 		task.F = f
 		task.Args = args
-		p.waitingTaskList.put(task)
+		_ = p.waitingTaskList.put(task)
 		p.addedTasks++
 		p.addTaskSignal <- true
 	}
