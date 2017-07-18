@@ -15,23 +15,35 @@ type Task struct {
 }
 
 // Add - add task to pool
-func (p *Pool) Add(f func(...interface{}) interface{}, args ...interface{}) {
+func (p *Pool) Add(f func(...interface{}) interface{}, args ...interface{}) error {
 	if f != nil && args != nil {
-		task := new(Task)
-		task.F = f
-		task.Args = args
-		_ = p.waitingTaskList.put(task)
-		p.addedTasks++
-		p.addTaskSignal <- true
+		return errInput
+	}
+	t := new(Task)
+	t.F = f
+	t.Args = args
+	p.pushTask(t)
+	return nil
+}
+
+func (p *Pool) popTask() {
+	if p.free() > 0 && p.queue.length() > 0 {
+		task, _ := p.queue.get()
+		p.workChan <- task
 	}
 }
 
-// Results - return all complete tasks and clear old results
-func (p *Pool) Results() []*Task {
-	results := p.completeTaskList.val
-	p.completeTaskList = new(tList)
-	return results
+func (p *Pool) pushTask(t *Task) {
+	p.addedTasks++
+	p.inputChan <- t
 }
+
+// Results - return all complete tasks and clear old results
+// func (p *Pool) Results() []*Task {
+// 	results := p.completeTaskList.val
+// 	p.completeTaskList = new(tList)
+// 	return results
+// }
 
 func (p *Pool) exec(t *Task) {
 	defer func() {
