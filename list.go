@@ -1,47 +1,29 @@
 package gopool
 
 import (
-	"errors"
 	"sync"
 )
 
-var (
-	errEmptyTaskList = errors.New("task list is empty")
-	errNilTask       = errors.New("task is nil")
-)
-
 type taskList struct {
-	m   sync.RWMutex
-	len int
-	val []*Task
+	sync.RWMutex
+	list []Task
 }
 
-func (t *taskList) put(task *Task) error {
-	t.m.Lock()
-	defer t.m.Unlock()
-	if task == nil {
-		return errNilTask
+func (tasks *taskList) put(task Task) {
+	tasks.Lock()
+	tasks.list = append(tasks.list, task)
+	tasks.Unlock()
+}
+
+func (tasks *taskList) get() (Task, bool) {
+	tasks.Lock()
+	var task Task
+	if len(tasks.list) > 0 {
+		task = tasks.list[0]
+		tasks.list = tasks.list[1:]
+		tasks.Unlock()
+		return task, true
 	}
-	t.val = append(t.val, task)
-	t.len++
-	return nil
-}
-
-func (t *taskList) get() (*Task, error) {
-	t.m.Lock()
-	defer t.m.Unlock()
-	var task *Task
-	if t.len > 0 {
-		task = t.val[0]
-		t.len--
-		t.val = t.val[1:]
-		return task, nil
-	}
-	return nil, errEmptyTaskList
-}
-
-func (t *taskList) length() int {
-	t.m.RLock()
-	defer t.m.RUnlock()
-	return t.len
+	tasks.Unlock()
+	return task, false
 }

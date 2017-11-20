@@ -1,53 +1,27 @@
 package gopool
 
 import (
-	"errors"
 	"sync"
 	"time"
 )
 
-var (
-	errWorkers = errors.New("workers already running")
-	errInput   = errors.New("error input values")
-	t10ms      = time.Duration(10) * time.Millisecond
-	timeout    = time.Duration(5) * time.Second
-)
+var t50ms = time.Duration(50) * time.Millisecond
 
 // Pool - specification of gopool
 type Pool struct {
-	m sync.RWMutex
-
-	numWorkers  int
-	freeWorkers int
-
-	startTime time.Time
-
-	inputChan  chan *Task
-	workChan   chan *Task
-	ResultChan chan Task
-
-	// useResultChan  bool
-	workersIsRunning bool
-	// managerRunning bool
-	addedTasks    int
-	completeTasks int
-
-	// runningTasks   int
-
-	// workersWg sync.WaitGroup
-	// managerWg sync.WaitGroup
-	// tasksWg   sync.WaitGroup
-
-	// waitingTaskList  *tList
-	// completeTaskList *tList
-
-	// workersQuitChan chan bool
-	managerQuitChan chan bool
-
-	// addTaskSignal  chan bool
-	doneTaskSignalChan chan bool
-	// resultChan     chan *Task
-	queue taskList
+	sync.RWMutex
+	timerIsRunning bool
+	numWorkers     int
+	freeWorkers    int
+	inputJobs      int
+	workChan       chan Task
+	inputTaskChan  chan Task
+	ResultChan     chan Task
+	quit           chan bool
+	endTaskChan    chan bool
+	queue          taskList
+	quitTimeout    time.Duration
+	timer          *time.Timer
 }
 
 // New - create new gorourine pool
@@ -55,66 +29,54 @@ type Pool struct {
 func New(numWorkers int) *Pool {
 	p := new(Pool)
 	p.numWorkers = numWorkers
-	p.startTime = time.Now()
-
-	// p.workChan = make(chan *Task, numWorkers)
-	p.inputChan = make(chan *Task)
+	p.freeWorkers = numWorkers
+	p.workChan = make(chan Task)
+	p.inputTaskChan = make(chan Task)
 	p.ResultChan = make(chan Task)
-
-	// pool.waitingTaskList = new(tList)
-	// pool.completeTaskList = new(tList)
-	// pool.workersQuitChan = make(chan bool)
-	p.managerQuitChan = make(chan bool)
-	// pool.addTaskSignal = make(chan bool)
-	p.doneTaskSignalChan = make(chan bool)
-	// pool.resultChan = make(chan *Task)
+	p.endTaskChan = make(chan bool)
+	p.quit = make(chan bool)
+	go p.runBroker()
+	go p.runWorkers()
 	return p
 }
 
-// Run - start pool
-func (p *Pool) Run() error {
-	if p.workersIsRunning {
-		return errWorkers
+func (p *Pool) runBroker() {
+loopPool:
+	for {
+		select {
+		case task := <-p.inputTaskChan:
+			p.incJobs()
+			task.ID = p.getJobs()
+			p.addTask(task)
+		case <-p.endTaskChan:
+			p.incWorkers()
+			if p.timerIsRunning && p.getFreeWorkers() == p.numWorkers {
+				p.timer.Reset(p.quitTimeout)
+			}
+		case <-p.quit:
+			close(p.workChan)
+			close(p.ResultChan)
+			break loopPool
+		case <-time.After(t50ms):
+			p.tryGetTask()
+		}
 	}
-	for i := 0; i < p.numWorkers; i++ {
-		go p.runWorker(i)
-	}
-	p.workersIsRunning = true
-	// if p.managerRunning {
-	// 	return errManager
-	// }
-	go p.manager()
-	// p.managerRunning = true
-	return nil
 }
 
-// Status - return addedTasks, runningTasks ant completeTasks
-// func (p *Pool) Status() (int, int, int) {
-// 	return p.addedTasks, p.runningTasks, p.completeTasks
-// }
+func (p *Pool) getJobs() int {
+	p.RLock()
+	inputJobs := p.inputJobs
+	p.RUnlock()
+	return inputJobs
+}
 
-// WaitAll - wait to finish all tasks
-// func (p *Pool) WaitAll() {
-// 	p.tasksWg.Wait()
-// }
+func (p *Pool) incJobs() {
+	p.Lock()
+	p.inputJobs++
+	p.Unlock()
+}
 
-// Quit - send quit
+// Quit - send quit signal to pool
 func (p *Pool) Quit() {
-	// close(p.workersQuitChan)
-	close(p.managerQuitChan)
+	p.quit <- true
 }
-
-// ResultChan - return chan of result tasks
-// func (p *Pool) ResultChan(open bool) *chan *Task {
-// 	if open {
-// 		p.useResultChan = true
-// 	} else {
-// 		p.useResultChan = false
-// 	}
-// 	return &p.resultChan
-// }
-
-// Done - check all task done
-// func (p *Pool) Done() bool {
-// 	return p.addedTasks > 0 && p.runningTasks == 0 && p.addedTasks == p.completeTasks
-// }

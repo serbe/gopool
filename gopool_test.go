@@ -2,6 +2,7 @@ package gopool
 
 import (
 	"testing"
+	"time"
 )
 
 var numWorkers = 4
@@ -10,55 +11,43 @@ func testFunc(args ...interface{}) interface{} {
 	return args[0].(int) * args[0].(int)
 }
 
+func testFunc2(args ...interface{}) interface{} {
+	time.Sleep(time.Duration(1) * time.Second)
+	return nil
+}
+
 func Test1(t *testing.T) {
 	p := New(numWorkers)
 	if p.numWorkers != numWorkers {
-		t.Fatalf("Found %v number of workers, want %v", p.numWorkers, numWorkers)
+		t.Errorf("Got %v numWorkers, want %v", p.numWorkers, numWorkers)
 	}
-	err := p.Run()
+	p.SetTaskTimeout(1)
+	err := p.Add(nil, 1)
+	if err != errNilFn {
+		t.Errorf("Got %v error, want %v", err, errNilFn)
+	}
+	err = p.Add(testFunc, 1)
 	if err != nil {
-		t.Fatal("Have error in already start workers")
+		t.Errorf("Got %v error, want %v", err, nil)
 	}
-	err = p.Run()
-	if err != errWorkers {
-		t.Fatal("No have error in already start workers")
+	result := <-p.ResultChan
+	if result.Result != 1 {
+		t.Errorf("Got %v result, want %v", result.Result, 1)
 	}
-	var addedTasks, runningTasks, completeTasks int
-	added, running, complete := p.Status()
-	if added != addedTasks {
-		t.Fatal("Wrong number of added tasks")
+	for i := 0; i < numWorkers+2; i++ {
+		p.Add(testFunc2)
 	}
-	if running != runningTasks {
-		t.Fatal("Wrong number of running tasks")
-	}
-	if complete != completeTasks {
-		t.Fatal("Wrong number of complete tasks")
-	}
-	if !p.Done() {
-		t.Fatal("Wrong done status")
-	}
-	p.ResultChan(false)
-	if !p.useResultChan {
-		t.Fatal("Wrong status of result chan")
-	}
-	p.ResultChan(true)
-	if !p.useResultChan {
-		t.Fatal("Wrong status of result chan")
-	}
-	p.Add(testFunc, 1)
-
+	p.tryGetTask()
 	p.Quit()
-	// p.WaitAll()
 }
 
 func BenchmarkAccumulate(b *testing.B) {
-	b.StopTimer()
-	b.StartTimer()
 	p := New(numWorkers)
-	_ = p.Run()
-	for i := 0; i < b.N; i++ {
+	n := b.N
+	for i := 0; i < n; i++ {
 		p.Add(testFunc, i)
 	}
-	p.WaitAll()
-	b.StopTimer()
+	// for i := 0; i < n; i++ {
+	// 	<-p.ResultChan
+	// }
 }

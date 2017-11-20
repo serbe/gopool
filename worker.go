@@ -1,35 +1,35 @@
 package gopool
 
-import "time"
-
-var ms10 = time.Duration(10) * time.Millisecond
-
-func (p *Pool) runWorker(id int) {
+func (p *Pool) worker(id int) {
 	for task := range p.workChan {
-		p.dec()
 		task.WorkerID = id
-		p.exec(task)
-		p.doneTaskSignalChan <- true
-		p.ResultChan <- *task
-		p.inc()
+		task = p.exec(task)
+		p.ResultChan <- task
+		p.endTaskChan <- true
 	}
 }
 
-func (p *Pool) free() int {
-	p.m.RLock()
-	defer p.m.RUnlock()
-	return p.freeWorkers
+func (p *Pool) runWorkers() {
+	for i := 0; i < p.numWorkers; i++ {
+		go p.worker(i)
+	}
 }
 
-func (p *Pool) inc() {
-	p.m.Lock()
+func (p *Pool) getFreeWorkers() int {
+	p.RLock()
+	freeWorkers := p.freeWorkers
+	p.RUnlock()
+	return freeWorkers
+}
+
+func (p *Pool) incWorkers() {
+	p.Lock()
 	p.freeWorkers++
-	p.completeTasks++
-	p.m.Unlock()
+	p.Unlock()
 }
 
-func (p *Pool) dec() {
-	p.m.Lock()
+func (p *Pool) decWorkers() {
+	p.Lock()
 	p.freeWorkers--
-	p.m.Unlock()
+	p.Unlock()
 }

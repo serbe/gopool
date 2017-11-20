@@ -1,58 +1,82 @@
 package gopool
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"time"
 )
+
+var errNilFn = errors.New("error: function is nil")
 
 // Task - task
 type Task struct {
+	ID       int
 	WorkerID int
-	F        func(...interface{}) interface{}
+	Fn       func(...interface{}) interface{}
 	Result   interface{}
 	Args     []interface{}
-	Err      error
+	Error    error
 }
 
-// Add - add task to pool
-func (p *Pool) Add(f func(...interface{}) interface{}, args ...interface{}) error {
-	if f != nil && args != nil {
-		return errInput
+// Add - add new task to pool
+func (p *Pool) Add(fn func(...interface{}) interface{}, args ...interface{}) error {
+	if fn == nil {
+		return errNilFn
 	}
-	t := new(Task)
-	t.F = f
-	t.Args = args
-	p.pushTask(t)
+	task := Task{
+		Fn:   fn,
+		Args: args,
+	}
+	p.inputTaskChan <- task
 	return nil
 }
 
-func (p *Pool) popTask() {
-	if p.free() > 0 && p.queue.length() > 0 {
-		task, _ := p.queue.get()
+func (p *Pool) addTask(task Task) {
+	if p.getFreeWorkers() > 0 {
+		if p.timerIsRunning {
+			p.timer.Stop()
+		}
+		p.decWorkers()
 		p.workChan <- task
+	} else {
+		p.queue.put(task)
 	}
 }
 
-func (p *Pool) pushTask(t *Task) {
-	p.addedTasks++
-	p.inputChan <- t
+func (p *Pool) tryGetTask() {
+	if p.freeWorkers > 0 {
+		task, ok := p.queue.get()
+		if ok {
+			if p.timerIsRunning {
+				p.timer.Stop()
+			}
+			p.decWorkers()
+			p.workChan <- task
+		}
+	}
 }
 
-// Results - return all complete tasks and clear old results
-// func (p *Pool) Results() []*Task {
-// 	results := p.completeTaskList.val
-// 	p.completeTaskList = new(tList)
-// 	return results
-// }
+// SetTaskTimeout - set task timeout in second before send quit signal
+func (p *Pool) SetTaskTimeout(t int) {
+	p.quitTimeout = time.Duration(t) * time.Second
+	p.timer = time.NewTimer(p.quitTimeout)
+	p.timerIsRunning = true
+	go func() {
+		<-p.timer.C
+		p.quit <- true
+	}()
+}
 
-func (p *Pool) exec(t *Task) {
+func (p *Pool) exec(task Task) Task {
 	defer func() {
 		err := recover()
 		if err != nil {
 			log.Println("Panic while running task:", err)
-			t.Result = nil
-			t.Err = fmt.Errorf("Recovery %v", err.(string))
+			task.Result = nil
+			task.Error = fmt.Errorf("Recovery %v", err.(string))
 		}
 	}()
-	t.Result = t.F(t.Args...)
+	task.Result = task.Fn(task.Args...)
+	return task
 }
