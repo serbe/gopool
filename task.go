@@ -44,7 +44,7 @@ func (p *Pool) addTask(task Task) {
 	}
 }
 
-func (p *Pool) tryGetTask() {
+func (p *Pool) TryGetTask() {
 	if p.freeWorkers > 0 {
 		task, ok := p.queue.get()
 		if ok {

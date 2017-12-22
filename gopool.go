@@ -58,7 +58,7 @@ loopPool:
 			close(p.ResultChan)
 			break loopPool
 		case <-time.After(t50ms):
-			p.tryGetTask()
+			p.TryGetTask()
 		}
 	}
 }
