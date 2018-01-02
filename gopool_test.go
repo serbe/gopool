@@ -37,7 +37,7 @@ func Test1(t *testing.T) {
 	for i := 0; i < numWorkers+2; i++ {
 		p.Add(testFunc2)
 	}
-	p.tryGetTask()
+	p.TryGetTask()
 	p.Quit()
 }
 
@@ -47,7 +47,7 @@ func BenchmarkAccumulate(b *testing.B) {
 	for i := 0; i < n; i++ {
 		p.Add(testFunc, i)
 	}
-	// for i := 0; i < n; i++ {
-	// 	<-p.ResultChan
-	// }
+	for i := 0; i < n; i++ {
+		<-p.ResultChan
+	}
 }

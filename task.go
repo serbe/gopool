@@ -29,6 +29,9 @@ func (p *Pool) Add(fn func(...interface{}) interface{}, args ...interface{}) err
 		Args: args,
 	}
 	p.inputTaskChan <- task
+	if !p.isRunning && p.autorun {
+		p.TryGetTask()
+	}
 	return nil
 }
 
@@ -44,8 +47,10 @@ func (p *Pool) addTask(task Task) {
 	}
 }
 
+// TryGetTask - try to get task from queue
 func (p *Pool) TryGetTask() {
 	if p.freeWorkers > 0 {
+		p.isRunning = true
 		task, ok := p.queue.get()
 		if ok {
 			if p.timerIsRunning {

@@ -11,6 +11,8 @@ var t50ms = time.Duration(50) * time.Millisecond
 type Pool struct {
 	sync.RWMutex
 	timerIsRunning bool
+	autorun        bool
+	isRunning      bool
 	numWorkers     int
 	freeWorkers    int
 	inputJobs      int
@@ -79,4 +81,9 @@ func (p *Pool) incJobs() {
 // Quit - send quit signal to pool
 func (p *Pool) Quit() {
 	p.quit <- true
+}
+
+// Autorun - set auto run get tasks
+func (p *Pool) Autorun(flag bool) {
+	p.autorun = flag
 }
