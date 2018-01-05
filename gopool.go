@@ -1,7 +1,7 @@
 package gopool
 
 import (
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -9,13 +9,12 @@ var t50ms = time.Duration(50) * time.Millisecond
 
 // Pool - specification of gopool
 type Pool struct {
-	sync.RWMutex
 	timerIsRunning bool
 	autorun        bool
 	isRunning      bool
-	numWorkers     int
-	freeWorkers    int
-	inputJobs      int
+	numWorkers     int32
+	freeWorkers    int32
+	inputJobs      int64
 	workChan       chan Task
 	inputTaskChan  chan Task
 	ResultChan     chan Task
@@ -28,10 +27,10 @@ type Pool struct {
 
 // New - create new gorourine pool
 // numWorkers - max workers
-func New(numWorkers int) *Pool {
+func New(numWorkers int32) *Pool {
 	p := new(Pool)
 	p.numWorkers = numWorkers
-	p.freeWorkers = numWorkers
+	p.freeWorkers = int32(numWorkers)
 	p.workChan = make(chan Task)
 	p.inputTaskChan = make(chan Task)
 	p.ResultChan = make(chan Task)
@@ -52,9 +51,10 @@ loopPool:
 			p.addTask(task)
 		case <-p.endTaskChan:
 			p.incWorkers()
-			if p.timerIsRunning && p.getFreeWorkers() == p.numWorkers {
+			if p.timerIsRunning && p.GetFreeWorkers() == p.numWorkers {
 				p.timer.Reset(p.quitTimeout)
 			}
+			p.TryGetTask()
 		case <-p.quit:
 			close(p.workChan)
 			close(p.ResultChan)
@@ -65,17 +65,12 @@ loopPool:
 	}
 }
 
-func (p *Pool) getJobs() int {
-	p.RLock()
-	inputJobs := p.inputJobs
-	p.RUnlock()
-	return inputJobs
+func (p *Pool) getJobs() int64 {
+	return atomic.LoadInt64(&p.inputJobs)
 }
 
 func (p *Pool) incJobs() {
-	p.Lock()
-	p.inputJobs++
-	p.Unlock()
+	atomic.AddInt64(&p.inputJobs, 1)
 }
 
 // Quit - send quit signal to pool

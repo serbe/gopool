@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-var numWorkers = 4
+var numWorkers int32 = 4
 
 func testFunc(args ...interface{}) interface{} {
 	return args[0].(int) * args[0].(int)
@@ -34,7 +34,7 @@ func Test1(t *testing.T) {
 	if result.Result != 1 {
 		t.Errorf("Got %v result, want %v", result.Result, 1)
 	}
-	for i := 0; i < numWorkers+2; i++ {
+	for i := 0; i < int(numWorkers+2); i++ {
 		p.Add(testFunc2)
 	}
 	p.TryGetTask()
@@ -48,6 +48,7 @@ func BenchmarkAccumulate(b *testing.B) {
 		p.Add(testFunc, i)
 	}
 	for i := 0; i < n; i++ {
-		<-p.ResultChan
+		task := <-p.ResultChan
+		_ = task.Result.(int)
 	}
 }

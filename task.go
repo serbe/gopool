@@ -11,8 +11,8 @@ var errNilFn = errors.New("error: function is nil")
 
 // Task - task
 type Task struct {
-	ID       int
-	WorkerID int
+	ID       int64
+	WorkerID int32
 	Fn       func(...interface{}) interface{}
 	Result   interface{}
 	Args     []interface{}
@@ -36,7 +36,7 @@ func (p *Pool) Add(fn func(...interface{}) interface{}, args ...interface{}) err
 }
 
 func (p *Pool) addTask(task Task) {
-	if p.getFreeWorkers() > 0 {
+	if p.GetFreeWorkers() > 0 {
 		if p.timerIsRunning {
 			p.timer.Stop()
 		}
@@ -49,7 +49,7 @@ func (p *Pool) addTask(task Task) {
 
 // TryGetTask - try to get task from queue
 func (p *Pool) TryGetTask() {
-	if p.freeWorkers > 0 {
+	if p.GetFreeWorkers() > 0 {
 		p.isRunning = true
 		task, ok := p.queue.get()
 		if ok {

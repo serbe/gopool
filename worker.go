@@ -1,6 +1,10 @@
 package gopool
 
-func (p *Pool) worker(id int) {
+import (
+	"sync/atomic"
+)
+
+func (p *Pool) worker(id int32) {
 	for task := range p.workChan {
 		task.WorkerID = id
 		task = p.exec(task)
@@ -10,26 +14,20 @@ func (p *Pool) worker(id int) {
 }
 
 func (p *Pool) runWorkers() {
-	for i := 0; i < p.numWorkers; i++ {
-		go p.worker(i)
+	for i := 0; i < int(p.numWorkers); i++ {
+		go p.worker(int32(i))
 	}
 }
 
-func (p *Pool) getFreeWorkers() int {
-	p.RLock()
-	freeWorkers := p.freeWorkers
-	p.RUnlock()
-	return freeWorkers
+// GetFreeWorkers - get num of free workers
+func (p *Pool) GetFreeWorkers() int32 {
+	return atomic.LoadInt32(&p.freeWorkers)
 }
 
 func (p *Pool) incWorkers() {
-	p.Lock()
-	p.freeWorkers++
-	p.Unlock()
+	atomic.AddInt32(&p.freeWorkers, 1)
 }
 
 func (p *Pool) decWorkers() {
-	p.Lock()
-	p.freeWorkers--
-	p.Unlock()
+	atomic.AddInt32(&p.freeWorkers, -1)
 }
