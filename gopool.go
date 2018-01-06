@@ -58,7 +58,6 @@ loopPool:
 		case <-p.quit:
 			close(p.workChan)
 			close(p.ResultChan)
-			p.chansIsClosed = true
 			break loopPool
 		case <-time.After(t50ms):
 			p.TryGetTask()
@@ -76,5 +75,6 @@ func (p *Pool) incJobs() {
 
 // Quit - send quit signal to pool
 func (p *Pool) Quit() {
+	p.chansIsClosed = true
 	p.quit <- true
 }
