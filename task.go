@@ -7,12 +7,15 @@ import (
 	"time"
 )
 
-var errNilFn = errors.New("error: function is nil")
+var (
+	errNilFn = errors.New("error: function is nil")
+	errICC   = errors.New("error: input channel is closing")
+)
 
 // Task - task
 type Task struct {
 	ID       int64
-	WorkerID int32
+	WorkerID int64
 	Fn       func(...interface{}) interface{}
 	Result   interface{}
 	Args     []interface{}
@@ -24,14 +27,14 @@ func (p *Pool) Add(fn func(...interface{}) interface{}, args ...interface{}) err
 	if fn == nil {
 		return errNilFn
 	}
+	if p.chansIsClosed {
+		return errICC
+	}
 	task := Task{
 		Fn:   fn,
 		Args: args,
 	}
 	p.inputTaskChan <- task
-	if !p.isRunning && p.autorun {
-		p.TryGetTask()
-	}
 	return nil
 }
 
@@ -50,7 +53,6 @@ func (p *Pool) addTask(task Task) {
 // TryGetTask - try to get task from queue
 func (p *Pool) TryGetTask() {
 	if p.GetFreeWorkers() > 0 {
-		p.isRunning = true
 		task, ok := p.queue.get()
 		if ok {
 			if p.timerIsRunning {
@@ -70,6 +72,7 @@ func (p *Pool) SetTaskTimeout(t int) {
 	go func() {
 		<-p.timer.C
 		p.quit <- true
+		// println("Break by timeout")
 	}()
 }
 

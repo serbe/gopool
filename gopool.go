@@ -9,11 +9,10 @@ var t50ms = time.Duration(50) * time.Millisecond
 
 // Pool - specification of gopool
 type Pool struct {
+	chansIsClosed  bool
 	timerIsRunning bool
-	autorun        bool
-	isRunning      bool
-	numWorkers     int32
-	freeWorkers    int32
+	numWorkers     int64
+	freeWorkers    int64
 	inputJobs      int64
 	workChan       chan Task
 	inputTaskChan  chan Task
@@ -27,10 +26,10 @@ type Pool struct {
 
 // New - create new gorourine pool
 // numWorkers - max workers
-func New(numWorkers int32) *Pool {
+func New(numWorkers int64) *Pool {
 	p := new(Pool)
 	p.numWorkers = numWorkers
-	p.freeWorkers = int32(numWorkers)
+	p.freeWorkers = numWorkers
 	p.workChan = make(chan Task)
 	p.inputTaskChan = make(chan Task)
 	p.ResultChan = make(chan Task)
@@ -49,6 +48,7 @@ loopPool:
 			p.incJobs()
 			task.ID = p.getJobs()
 			p.addTask(task)
+			p.TryGetTask()
 		case <-p.endTaskChan:
 			p.incWorkers()
 			if p.timerIsRunning && p.GetFreeWorkers() == p.numWorkers {
@@ -58,6 +58,7 @@ loopPool:
 		case <-p.quit:
 			close(p.workChan)
 			close(p.ResultChan)
+			p.chansIsClosed = true
 			break loopPool
 		case <-time.After(t50ms):
 			p.TryGetTask()
@@ -76,9 +77,4 @@ func (p *Pool) incJobs() {
 // Quit - send quit signal to pool
 func (p *Pool) Quit() {
 	p.quit <- true
-}
-
-// Autorun - set auto run get tasks
-func (p *Pool) Autorun(flag bool) {
-	p.autorun = flag
 }
