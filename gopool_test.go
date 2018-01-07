@@ -1,6 +1,7 @@
 package gopool
 
 import (
+	"log"
 	"testing"
 	"time"
 )
@@ -56,8 +57,14 @@ func Test1(t *testing.T) {
 func TestTimeout(t *testing.T) {
 	p := New(numWorkers)
 	p.SetTaskTimeout(1)
-	p.Add(testFunc2, 3)
-	<-p.ResultChan
+	p.Add(testFunc2, 2)
+	p.Add(testFunc2, 2)
+	p.Add(testFunc2, 4)
+	var i int64
+	for range p.ResultChan {
+		i++
+	}
+	log.Println(i)
 }
 
 func BenchmarkAccumulate(b *testing.B) {

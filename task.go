@@ -72,8 +72,8 @@ func (p *Pool) SetTaskTimeout(t int) {
 	go func() {
 		<-p.timer.C
 		p.chansIsClosed = true
+		log.Println("Break by timeout")
 		p.quit <- true
-		println("Break by timeout")
 	}()
 }
 
