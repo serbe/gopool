@@ -8,7 +8,7 @@ func (p *Pool) worker(id int64) {
 	for task := range p.workChan {
 		task.WorkerID = id
 		task = p.exec(task)
-		if !p.chansIsClosed {
+		if p.poolIsRunning() {
 			p.ResultChan <- task
 			p.endTaskChan <- true
 		} else {

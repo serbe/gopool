@@ -3,13 +3,13 @@ package gopool
 import (
 	"errors"
 	"fmt"
-	"log"
 	"time"
 )
 
 var (
-	errNilFn = errors.New("error: function is nil")
-	errICC   = errors.New("error: input channel is closing")
+	errNilFn   = errors.New("error: function is nil")
+	errNotRun  = errors.New("error: pool is not running")
+	errTimeout = errors.New("error: timed out")
 )
 
 // Task - task
@@ -27,8 +27,8 @@ func (p *Pool) Add(fn func(...interface{}) interface{}, args ...interface{}) err
 	if fn == nil {
 		return errNilFn
 	}
-	if p.chansIsClosed {
-		return errICC
+	if !p.poolIsRunning() {
+		return errNotRun
 	}
 	task := Task{
 		Fn:   fn,
@@ -40,9 +40,9 @@ func (p *Pool) Add(fn func(...interface{}) interface{}, args ...interface{}) err
 
 func (p *Pool) addTask(task Task) {
 	if p.GetFreeWorkers() > 0 {
-		if p.timerIsRunning {
-			p.timer.Stop()
-		}
+		// if p.timerIsRunning() {
+		// 	p.timer.Stop()
+		// }
 		p.decWorkers()
 		p.workChan <- task
 	} else {
@@ -55,9 +55,9 @@ func (p *Pool) TryGetTask() {
 	if p.GetFreeWorkers() > 0 {
 		task, ok := p.queue.get()
 		if ok {
-			if p.timerIsRunning {
-				p.timer.Stop()
-			}
+			// if p.timerIsRunning() {
+			// 	p.timer.Stop()
+			// }
 			p.decWorkers()
 			p.workChan <- task
 		}
@@ -67,25 +67,46 @@ func (p *Pool) TryGetTask() {
 // SetTaskTimeout - set task timeout in second before send quit signal
 func (p *Pool) SetTaskTimeout(t int) {
 	p.quitTimeout = time.Duration(t) * time.Second
-	p.timer = time.NewTimer(p.quitTimeout)
-	p.timerIsRunning = true
-	go func() {
-		<-p.timer.C
-		p.chansIsClosed = true
-		log.Println("Break by timeout")
-		p.quit <- true
-	}()
+	p.useTimeout = true
+	// atomic.StoreUint32(&p.runningTimer, 1)
 }
+
+// func (p *Pool) SetTaskTimeout(t int) {
+// 	p.quitTimeout = time.Duration(t) * time.Second
+// 	p.timer = time.NewTimer(p.quitTimeout)
+// 	atomic.StoreUint32(&p.runningTimer, 1)
+// 	go func() {
+// 		<-p.timer.C
+// 		atomic.StoreUint32(&p.runningPool, 0)
+// 		// log.Println("Break by timeout")
+// 		p.quit <- true
+// 	}()
+// }
 
 func (p *Pool) exec(task Task) Task {
 	defer func() {
 		err := recover()
 		if err != nil {
-			log.Println("Panic while running task:", err)
 			task.Result = nil
 			task.Error = fmt.Errorf("Recovery %v", err.(string))
 		}
 	}()
-	task.Result = task.Fn(task.Args...)
+	if p.useTimeout {
+		ch := make(chan interface{}, 1)
+		defer close(ch)
+
+		go func() {
+			ch <- task.Fn(task.Args...)
+		}()
+
+		select {
+		case result := <-ch:
+			task.Result = result
+		case <-time.After(1 * time.Second):
+			task.Error = errTimeout
+		}
+	} else {
+		task.Result = task.Fn(task.Args...)
+	}
 	return task
 }

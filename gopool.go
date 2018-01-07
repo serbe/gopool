@@ -9,19 +9,20 @@ var t50ms = time.Duration(50) * time.Millisecond
 
 // Pool - specification of gopool
 type Pool struct {
-	chansIsClosed  bool
-	timerIsRunning bool
-	numWorkers     int64
-	freeWorkers    int64
-	inputJobs      int64
-	workChan       chan Task
-	inputTaskChan  chan Task
-	ResultChan     chan Task
-	quit           chan bool
-	endTaskChan    chan bool
-	queue          taskList
-	quitTimeout    time.Duration
-	timer          *time.Timer
+	useTimeout  bool
+	runningPool uint32
+	// runningTimer  uint32
+	numWorkers    int64
+	freeWorkers   int64
+	inputJobs     int64
+	workChan      chan Task
+	inputTaskChan chan Task
+	ResultChan    chan Task
+	quit          chan bool
+	endTaskChan   chan bool
+	queue         taskList
+	quitTimeout   time.Duration
+	// timer         *time.Timer
 }
 
 // New - create new gorourine pool
@@ -37,6 +38,7 @@ func New(numWorkers int64) *Pool {
 	p.quit = make(chan bool)
 	go p.runBroker()
 	go p.runWorkers()
+	p.runningPool = 1
 	return p
 }
 
@@ -51,9 +53,9 @@ loopPool:
 			p.TryGetTask()
 		case <-p.endTaskChan:
 			p.incWorkers()
-			if p.timerIsRunning && p.GetFreeWorkers() == p.numWorkers {
-				p.timer.Reset(p.quitTimeout)
-			}
+			// if p.timerIsRunning() && p.GetFreeWorkers() == p.numWorkers {
+			// 	p.timer.Reset(p.quitTimeout)
+			// }
 			p.TryGetTask()
 		case <-p.quit:
 			close(p.workChan)
@@ -75,6 +77,14 @@ func (p *Pool) incJobs() {
 
 // Quit - send quit signal to pool
 func (p *Pool) Quit() {
-	p.chansIsClosed = true
+	atomic.StoreUint32(&p.runningPool, 0)
 	p.quit <- true
 }
+
+func (p *Pool) poolIsRunning() bool {
+	return atomic.LoadUint32(&p.runningPool) != 0
+}
+
+// func (p *Pool) timerIsRunning() bool {
+// 	return atomic.LoadUint32(&p.runningTimer) != 0
+// }

@@ -1,7 +1,6 @@
 package gopool
 
 import (
-	"log"
 	"testing"
 	"time"
 )
@@ -49,8 +48,8 @@ func Test1(t *testing.T) {
 	}
 	p.Quit()
 	err = p.Add(testFunc2, 3)
-	if err != errICC {
-		t.Errorf("Got %v error, want %v", err, errICC)
+	if err != errNotRun {
+		t.Errorf("Got %v error, want %v", err, errNotRun)
 	}
 }
 
@@ -60,15 +59,32 @@ func TestTimeout(t *testing.T) {
 	p.Add(testFunc2, 2)
 	p.Add(testFunc2, 2)
 	p.Add(testFunc2, 4)
-	var i int64
-	for range p.ResultChan {
-		i++
+	for i := 0; i < 3; i++ {
+		task := <-p.ResultChan
+		if task.Error != errTimeout {
+			t.Errorf("Got %v error, want %v", task.Error, errTimeout)
+		}
 	}
-	log.Println(i)
 }
 
 func BenchmarkAccumulate(b *testing.B) {
 	p := New(numWorkers)
+	n := b.N
+	for i := 0; i < n; i++ {
+		err := p.Add(testFunc, i)
+		if err != nil {
+			println("Error", err)
+		}
+	}
+	for i := 0; i < n; i++ {
+		task := <-p.ResultChan
+		_ = task.Result.(int)
+	}
+}
+
+func BenchmarkTimeout(b *testing.B) {
+	p := New(numWorkers)
+	p.SetTaskTimeout(1)
 	n := b.N
 	for i := 0; i < n; i++ {
 		err := p.Add(testFunc, i)
