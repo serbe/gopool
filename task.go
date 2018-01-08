@@ -30,7 +30,7 @@ func (p *Pool) Add(fn func(...interface{}) interface{}, args ...interface{}) err
 	if !p.poolIsRunning() {
 		return errNotRun
 	}
-	task := Task{
+	task := &Task{
 		Fn:   fn,
 		Args: args,
 	}
@@ -38,7 +38,7 @@ func (p *Pool) Add(fn func(...interface{}) interface{}, args ...interface{}) err
 	return nil
 }
 
-func (p *Pool) addTask(task Task) {
+func (p *Pool) addTask(task *Task) {
 	if p.GetFreeWorkers() > 0 {
 		// if p.timerIsRunning() {
 		// 	p.timer.Stop()
@@ -47,6 +47,7 @@ func (p *Pool) addTask(task Task) {
 		p.workChan <- task
 	} else {
 		p.queue.put(task)
+		// p.put(task)
 	}
 }
 
@@ -54,6 +55,7 @@ func (p *Pool) addTask(task Task) {
 func (p *Pool) TryGetTask() {
 	if p.GetFreeWorkers() > 0 {
 		task, ok := p.queue.get()
+		// task, ok := p.get()
 		if ok {
 			// if p.timerIsRunning() {
 			// 	p.timer.Stop()
@@ -83,7 +85,7 @@ func (p *Pool) SetTaskTimeout(t int) {
 // 	}()
 // }
 
-func (p *Pool) exec(task Task) Task {
+func (p *Pool) exec(task *Task) *Task {
 	defer func() {
 		err := recover()
 		if err != nil {

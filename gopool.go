@@ -1,11 +1,12 @@
 package gopool
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
-var t50ms = time.Duration(50) * time.Millisecond
+// var t50ms = time.Duration(50) * time.Millisecond
 
 // Pool - specification of gopool
 type Pool struct {
@@ -15,13 +16,14 @@ type Pool struct {
 	numWorkers    int64
 	freeWorkers   int64
 	inputJobs     int64
-	workChan      chan Task
-	inputTaskChan chan Task
-	ResultChan    chan Task
+	workChan      chan *Task
+	inputTaskChan chan *Task
+	ResultChan    chan *Task
 	quit          chan bool
 	endTaskChan   chan bool
-	queue         taskList
+	queue         *taskList
 	quitTimeout   time.Duration
+	list          sync.Pool
 	// timer         *time.Timer
 }
 
@@ -31,11 +33,18 @@ func New(numWorkers int64) *Pool {
 	p := new(Pool)
 	p.numWorkers = numWorkers
 	p.freeWorkers = numWorkers
-	p.workChan = make(chan Task)
-	p.inputTaskChan = make(chan Task)
-	p.ResultChan = make(chan Task)
+	p.workChan = make(chan *Task)
+	p.inputTaskChan = make(chan *Task)
+	p.ResultChan = make(chan *Task)
 	p.endTaskChan = make(chan bool)
 	p.quit = make(chan bool)
+	p.queue = new(taskList)
+	p.list = sync.Pool{}
+	// 	New: func() interface{} {
+	// 		t := new(Task)
+	// 		return t
+	// 	},
+	// }
 	go p.runBroker()
 	go p.runWorkers()
 	p.runningPool = 1
@@ -61,8 +70,8 @@ loopPool:
 			close(p.workChan)
 			close(p.ResultChan)
 			break loopPool
-		case <-time.After(t50ms):
-			p.TryGetTask()
+			// case <-time.After(t50ms):
+			// 	p.TryGetTask()
 		}
 	}
 }
