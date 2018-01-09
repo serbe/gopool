@@ -2,7 +2,6 @@ package gopool
 
 import (
 	"sync"
-	"sync/atomic"
 )
 
 type taskList struct {
@@ -20,17 +19,14 @@ func (tasks *taskList) put(task *Task) {
 
 func (tasks *taskList) get() (*Task, bool) {
 	var task *Task
-	if tasks.length() > 0 {
-		tasks.Lock()
+	tasks.Lock()
+	if tasks.len > 0 {
 		task = tasks.list[0]
 		tasks.list = tasks.list[1:]
 		tasks.len--
 		tasks.Unlock()
 		return task, true
 	}
+	tasks.Unlock()
 	return task, false
-}
-
-func (tasks *taskList) length() int64 {
-	return atomic.LoadInt64(&tasks.len)
 }

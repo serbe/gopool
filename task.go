@@ -62,7 +62,6 @@ func (p *Pool) TryGetTask() {
 func (p *Pool) SetTaskTimeout(t int) {
 	p.quitTimeout = time.Duration(t) * time.Second
 	p.useTimeout = true
-	// atomic.StoreUint32(&p.runningTimer, 1)
 }
 
 func (p *Pool) exec(task *Task) *Task {

@@ -21,7 +21,7 @@ func Test1(t *testing.T) {
 	if p.numWorkers != numWorkers {
 		t.Errorf("Got %v numWorkers, want %v", p.numWorkers, numWorkers)
 	}
-	p.SetTaskTimeout(1)
+	// p.SetTaskTimeout(1)
 	err := p.Add(nil, 1)
 	if err != errNilFn {
 		t.Errorf("Got %v error, want %v", err, errNilFn)
