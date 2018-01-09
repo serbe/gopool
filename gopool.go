@@ -1,7 +1,6 @@
 package gopool
 
 import (
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -10,9 +9,8 @@ import (
 
 // Pool - specification of gopool
 type Pool struct {
-	useTimeout  bool
-	runningPool uint32
-	// runningTimer  uint32
+	useTimeout    bool
+	runningPool   uint32
 	numWorkers    int64
 	freeWorkers   int64
 	inputJobs     int64
@@ -23,8 +21,6 @@ type Pool struct {
 	endTaskChan   chan bool
 	queue         *taskList
 	quitTimeout   time.Duration
-	list          sync.Pool
-	// timer         *time.Timer
 }
 
 // New - create new gorourine pool
@@ -39,12 +35,6 @@ func New(numWorkers int64) *Pool {
 	p.endTaskChan = make(chan bool)
 	p.quit = make(chan bool)
 	p.queue = new(taskList)
-	p.list = sync.Pool{}
-	// 	New: func() interface{} {
-	// 		t := new(Task)
-	// 		return t
-	// 	},
-	// }
 	go p.runBroker()
 	go p.runWorkers()
 	p.runningPool = 1
@@ -62,16 +52,11 @@ loopPool:
 			p.TryGetTask()
 		case <-p.endTaskChan:
 			p.incWorkers()
-			// if p.timerIsRunning() && p.GetFreeWorkers() == p.numWorkers {
-			// 	p.timer.Reset(p.quitTimeout)
-			// }
 			p.TryGetTask()
 		case <-p.quit:
 			close(p.workChan)
 			close(p.ResultChan)
 			break loopPool
-			// case <-time.After(t50ms):
-			// 	p.TryGetTask()
 		}
 	}
 }
@@ -93,7 +78,3 @@ func (p *Pool) Quit() {
 func (p *Pool) poolIsRunning() bool {
 	return atomic.LoadUint32(&p.runningPool) != 0
 }
-
-// func (p *Pool) timerIsRunning() bool {
-// 	return atomic.LoadUint32(&p.runningTimer) != 0
-// }

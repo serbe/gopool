@@ -97,3 +97,25 @@ func BenchmarkTimeout(b *testing.B) {
 		_ = task.Result.(int)
 	}
 }
+
+func BenchmarkParallel(b *testing.B) {
+	p := New(numWorkers)
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			err := p.Add(testFunc, 1)
+			if err != nil {
+				b.Errorf("Got %v error, want %v", err, nil)
+			}
+		}
+	})
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			task := <-p.ResultChan
+			res := task.Result.(int)
+			if res != 1 {
+				b.Errorf("Got %v error, want %v", res, 1)
+			}
+		}
+	})
+}

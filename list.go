@@ -18,18 +18,6 @@ func (tasks *taskList) put(task *Task) {
 	tasks.Unlock()
 }
 
-func (p *Pool) put(task *Task) {
-	p.list.Put(task)
-}
-
-func (p *Pool) get() (*Task, bool) {
-	t := p.list.Get()
-	if t != nil {
-		return t.(*Task), true
-	}
-	return &Task{}, false
-}
-
 func (tasks *taskList) get() (*Task, bool) {
 	var task *Task
 	if tasks.length() > 0 {

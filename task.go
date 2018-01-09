@@ -40,14 +40,10 @@ func (p *Pool) Add(fn func(...interface{}) interface{}, args ...interface{}) err
 
 func (p *Pool) addTask(task *Task) {
 	if p.GetFreeWorkers() > 0 {
-		// if p.timerIsRunning() {
-		// 	p.timer.Stop()
-		// }
 		p.decWorkers()
 		p.workChan <- task
 	} else {
 		p.queue.put(task)
-		// p.put(task)
 	}
 }
 
@@ -55,11 +51,7 @@ func (p *Pool) addTask(task *Task) {
 func (p *Pool) TryGetTask() {
 	if p.GetFreeWorkers() > 0 {
 		task, ok := p.queue.get()
-		// task, ok := p.get()
 		if ok {
-			// if p.timerIsRunning() {
-			// 	p.timer.Stop()
-			// }
 			p.decWorkers()
 			p.workChan <- task
 		}
@@ -73,18 +65,6 @@ func (p *Pool) SetTaskTimeout(t int) {
 	// atomic.StoreUint32(&p.runningTimer, 1)
 }
 
-// func (p *Pool) SetTaskTimeout(t int) {
-// 	p.quitTimeout = time.Duration(t) * time.Second
-// 	p.timer = time.NewTimer(p.quitTimeout)
-// 	atomic.StoreUint32(&p.runningTimer, 1)
-// 	go func() {
-// 		<-p.timer.C
-// 		atomic.StoreUint32(&p.runningPool, 0)
-// 		// log.Println("Break by timeout")
-// 		p.quit <- true
-// 	}()
-// }
-
 func (p *Pool) exec(task *Task) *Task {
 	defer func() {
 		err := recover()
@@ -95,7 +75,7 @@ func (p *Pool) exec(task *Task) *Task {
 	}()
 	if p.useTimeout {
 		ch := make(chan interface{}, 1)
-		defer close(ch)
+		// defer close(ch)
 
 		go func() {
 			ch <- task.Fn(task.Args...)
