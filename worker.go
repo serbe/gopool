@@ -24,8 +24,7 @@ func (p *Pool) runWorkers() {
 	}
 }
 
-// GetFreeWorkers - get num of free workers
-func (p *Pool) GetFreeWorkers() int64 {
+func (p *Pool) getFreeWorkers() int64 {
 	return atomic.LoadInt64(&p.freeWorkers)
 }
 

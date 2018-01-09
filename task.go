@@ -39,7 +39,7 @@ func (p *Pool) Add(fn func(...interface{}) interface{}, args ...interface{}) err
 }
 
 func (p *Pool) addTask(task *Task) {
-	if p.GetFreeWorkers() > 0 {
+	if p.getFreeWorkers() > 0 {
 		p.decWorkers()
 		p.workChan <- task
 	} else {
@@ -47,14 +47,11 @@ func (p *Pool) addTask(task *Task) {
 	}
 }
 
-// TryGetTask - try to get task from queue
-func (p *Pool) TryGetTask() {
-	if p.GetFreeWorkers() > 0 {
-		task, ok := p.queue.get()
-		if ok {
-			p.decWorkers()
-			p.workChan <- task
-		}
+func (p *Pool) tryGetTask() {
+	task, ok := p.queue.get()
+	if ok {
+		p.decWorkers()
+		p.workChan <- task
 	}
 }
 

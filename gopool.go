@@ -23,7 +23,7 @@ type Pool struct {
 	quitTimeout   time.Duration
 }
 
-// New - create new gorourine pool
+// New - create new gorourine pool with channels
 // numWorkers - max workers
 func New(numWorkers int64) *Pool {
 	p := new(Pool)
@@ -47,12 +47,11 @@ loopPool:
 		select {
 		case task := <-p.inputTaskChan:
 			p.incJobs()
-			task.ID = p.getJobs()
+			task.ID = p.GetJobs()
 			p.addTask(task)
-			p.TryGetTask()
 		case <-p.endTaskChan:
 			p.incWorkers()
-			p.TryGetTask()
+			p.tryGetTask()
 		case <-p.quit:
 			close(p.workChan)
 			close(p.ResultChan)
@@ -61,7 +60,8 @@ loopPool:
 	}
 }
 
-func (p *Pool) getJobs() int64 {
+// GetJobs - get num of added jobs
+func (p *Pool) GetJobs() int64 {
 	return atomic.LoadInt64(&p.inputJobs)
 }
 
