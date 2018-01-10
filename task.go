@@ -71,10 +71,10 @@ func (p *Pool) exec(task *Task) *Task {
 	}()
 	if p.useTimeout {
 		ch := make(chan interface{}, 1)
-		// defer close(ch)
 
 		go func() {
 			ch <- task.Fn(task.Args...)
+			defer close(ch)
 		}()
 
 		select {
